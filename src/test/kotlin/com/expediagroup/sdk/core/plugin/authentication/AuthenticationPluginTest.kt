@@ -23,11 +23,9 @@ import com.expediagroup.sdk.core.commons.TestConstants.ACCESS_TOKEN
 import com.expediagroup.sdk.core.commons.TestConstants.ANY_URL
 import com.expediagroup.sdk.core.commons.TestConstants.CLIENT_KEY_TEST_CREDENTIAL
 import com.expediagroup.sdk.core.commons.TestConstants.CLIENT_SECRET_TEST_CREDENTIAL
-import com.expediagroup.sdk.core.commons.TestConstants.SIGNATURE_VALUE
 import com.expediagroup.sdk.core.configuration.Credentials
 import com.expediagroup.sdk.core.configuration.provider.DefaultConfigurationProvider
 import com.expediagroup.sdk.core.constant.Authentication.BEARER
-import com.expediagroup.sdk.core.constant.Authentication.EAN
 import com.expediagroup.sdk.core.constant.ExceptionMessage
 import com.expediagroup.sdk.core.constant.HeaderKey
 import com.expediagroup.sdk.core.model.exception.service.OpenWorldAuthException
@@ -35,7 +33,6 @@ import com.expediagroup.sdk.core.plugin.Hooks
 import com.expediagroup.sdk.core.plugin.authentication.helper.SuccessfulStatusCodesArgumentProvider
 import com.expediagroup.sdk.core.plugin.authentication.helper.UnsuccessfulStatusCodesArgumentProvider
 import com.expediagroup.sdk.core.plugin.authentication.strategy.bearer.BearerStrategy
-import com.expediagroup.sdk.core.plugin.authentication.strategy.signature.calculateSignature
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.request.get
@@ -46,9 +43,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.mockk.clearAllMocks
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockkObject
-import io.mockk.mockkStatic
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -86,66 +81,6 @@ internal class AuthenticationPluginTest {
             it.isAccessible = true
             val hooksCollection = it.javaField?.get(Hooks) as MutableList<*>
             hooksCollection.clear()
-        }
-    }
-
-    @Nested
-    inner class SignatureStrategyTest {
-        @Test
-        fun `making any http call should invoke the authorized signature`() {
-            runBlocking {
-                mockSignatureCalculator()
-
-                val httpClient = ClientFactory.createRapidClient().httpClient
-                val request = httpClient.get(ANY_URL)
-
-                assertThat(request.request.headers[HeaderKey.AUTHORIZATION]).isEqualTo(
-                    "$EAN $SIGNATURE_VALUE"
-                )
-            }
-        }
-
-        @Test
-        fun `given new request then should renew token`() {
-            runBlocking {
-                val httpClient = ClientFactory.createRapidClient().httpClient
-
-                val firstRequest = httpClient.get(ANY_URL)
-                delay(1000)
-                val secondRequest = httpClient.get(ANY_URL)
-
-                assertThat(firstRequest.request.headers[HeaderKey.AUTHORIZATION]).isNotEqualTo(
-                    secondRequest.request.headers[HeaderKey.AUTHORIZATION]
-                )
-            }
-        }
-
-        @Test
-        fun `given multiple requests then no requests should be unauthorized`() {
-            runBlocking {
-                mockkObject(AuthenticationPlugin)
-                val httpClient = ClientFactory.createRapidClient().httpClient
-
-                launch {
-                    httpClient.get(ANY_URL)
-                }
-                launch {
-                    httpClient.get(ANY_URL)
-                }
-                launch {
-                    httpClient.get(ANY_URL)
-                }
-
-                delay(1000)
-                coVerify(exactly = 3) {
-                    AuthenticationPlugin.renewToken(httpClient, any())
-                }
-            }
-        }
-
-        private fun mockSignatureCalculator() {
-            mockkStatic("com.expediagroup.sdk.core.plugin.authentication.strategy.signature.SignatureCalculatorKt")
-            every { calculateSignature(any(), any(), any()) } returns SIGNATURE_VALUE
         }
     }
 

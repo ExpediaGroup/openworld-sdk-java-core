@@ -44,7 +44,7 @@ abstract class OpenApiStub(
     /**
      * Create a new [Client] instance to be used by the generated OpenAPI APIs.
      */
-    protected open fun createClient(): Client = Client.from(OkHttp.create(), clientConfiguration, false)
+    protected open fun createClient(): Client = Client.from(OkHttp.create(), clientConfiguration)
 
     protected fun collectionDelimiter(format: String): String {
         return when (format) {
